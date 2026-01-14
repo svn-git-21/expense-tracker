@@ -155,52 +155,20 @@
         .full-width { grid-column: span 2; }
         
         /* === DROPDOWN FIXES === */
-        .custom-select-wrapper { 
-            position: relative; 
-            width: 100%;
-        }
-        
+        .custom-select-wrapper { position: relative; width: 100%; }
         .custom-select-wrapper i {
-            position: absolute;
-            right: 15px;
-            top: 50%;
-            transform: translateY(-50%);
-            pointer-events: none; /* Icon won't block clicks */
-            color: var(--text-sec);
-            font-size: 0.8rem;
-            z-index: 10;
+            position: absolute; right: 15px; top: 50%; transform: translateY(-50%);
+            pointer-events: none; color: var(--text-sec); font-size: 0.8rem; z-index: 10;
         }
 
         input, select { 
-            width: 100%; 
-            padding: 14px 16px; 
-            background: var(--input-bg); 
-            border: 1px solid var(--input-border); 
-            border-radius: 12px; 
-            color: var(--text-main); 
-            font-size: 1rem; 
-            outline: none; 
-            font-family: var(--font);
-            
-            /* Remove Default Arrow */
-            -webkit-appearance: none;
-            -moz-appearance: none;
-            appearance: none;
-            
-            /* Ensure cursor works */
-            cursor: pointer;
+            width: 100%; padding: 14px 16px; background: var(--input-bg); 
+            border: 1px solid var(--input-border); border-radius: 12px; 
+            color: var(--text-main); font-size: 1rem; outline: none; font-family: var(--font);
+            -webkit-appearance: none; -moz-appearance: none; appearance: none; cursor: pointer;
         }
-        
-        /* Add right padding so text doesn't overlap custom icon */
         select { padding-right: 40px; }
-        
-        /* Fix dropdown options readability in dark mode */
-        select option {
-            background-color: var(--bg-card);
-            color: var(--text-main);
-            padding: 10px;
-        }
-
+        select option { background-color: var(--bg-card); color: var(--text-main); padding: 10px; }
         input:focus, select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1); }
         
         .btn-group { display: flex; gap: 15px; margin-top: 20px; }
@@ -251,9 +219,7 @@
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--modal-overlay); backdrop-filter: blur(5px); align-items: center; justify-content: center; z-index: 1000; animation: fadeInModal 0.3s; }
         @keyframes fadeInModal { from { opacity: 0; } to { opacity: 1; } }
         
-        .modal-content { 
-            width: 90%; max-width: 500px; padding: 30px;
-        }
+        .modal-content { width: 90%; max-width: 500px; padding: 30px; }
         .modal-header { display: flex; justify-content: space-between; margin-bottom: 25px; align-items: center; }
         .modal-header h2 { font-size: 1.5rem; color: var(--text-main); }
         .close-modal { cursor: pointer; font-size: 1.5rem; color: var(--text-sec); transition: 0.2s; }
@@ -345,7 +311,9 @@
                     <span id="syncText">Offline</span>
                 </div>
                 <div class="header-controls">
-                    <button class="icon-btn" onclick="fullSync()" title="Sync Now"><i class="fas fa-sync-alt"></i></button>
+                    <button class="icon-btn" onclick="uploadData()" title="Upload to Cloud"><i class="fas fa-cloud-upload-alt"></i></button>
+                    <button class="icon-btn" onclick="downloadData()" title="Download from Cloud"><i class="fas fa-cloud-download-alt"></i></button>
+                    
                     <button class="icon-btn" onclick="cycleTheme()" title="Change Theme"><i class="fas fa-palette"></i></button>
                     <button class="icon-btn" onclick="toggleModal(true)" title="Settings"><i class="fas fa-cog"></i></button>
                     <button class="icon-btn logout-btn" onclick="logout()" title="Logout"><i class="fas fa-sign-out-alt"></i></button>
@@ -623,16 +591,36 @@
         
         saveState();
         processData();
-        if(apiUrl) fullSync(); 
+        // AUTO SYNC REMOVED - User must click button manually now
     });
 
-    async function fullSync() {
+    // --- MANUAL SYNC FUNCTIONS ---
+    async function uploadData() {
         if(!apiUrl) { alert("Configure URL in Settings."); return; }
         updateSyncStatus('syncing');
         try {
             await fetch(apiUrl, { method: 'POST', body: JSON.stringify(appState) });
             updateSyncStatus('success');
-        } catch(e) { updateSyncStatus('ready'); }
+            alert("Upload Successful!");
+        } catch(e) { updateSyncStatus('ready'); alert("Upload Failed"); }
+    }
+
+    async function downloadData() {
+        if(!apiUrl) { alert("Configure URL in Settings."); return; }
+        updateSyncStatus('syncing');
+        try {
+            const res = await fetch(apiUrl);
+            const data = await res.json();
+            if(data && data.transactions) {
+                if(confirm("Overwrite local data with Cloud data?")) {
+                    appState = data;
+                    saveState();
+                    processData();
+                    alert("Download Successful!");
+                }
+            }
+            updateSyncStatus('success');
+        } catch(e) { updateSyncStatus('ready'); alert("Download Failed"); }
     }
 
     function renderCharts() {
@@ -705,7 +693,7 @@
     function deleteTx(id) {
         if(confirm("Delete this transaction?")) {
             appState.transactions = appState.transactions.filter(t => t.id !== id);
-            saveState(); processData(); fullSync();
+            saveState(); processData(); 
         }
     }
 
@@ -729,7 +717,7 @@
 
     function setNewPin() {
         const p = document.getElementById('newPinInput').value;
-        if(p.length===4 && !isNaN(p)) { appState.pin = p; saveState(); alert("PIN Updated"); fullSync(); } 
+        if(p.length===4 && !isNaN(p)) { appState.pin = p; saveState(); alert("PIN Updated"); } 
         else alert("Must be 4 digits");
     }
 
@@ -773,7 +761,7 @@
     
     function toggleModal(s) { document.getElementById('settingsModal').style.display = s?'flex':'none'; }
     function saveSettings() { const u = document.getElementById('apiUrlInput').value.trim(); if(u){ localStorage.setItem('apiUrl',u); apiUrl=u; updateSyncStatus('ready'); alert("Saved"); toggleModal(false); } }
-    function clearAllData() { if(confirm("Reset everything?")) { appState.transactions=[]; saveState(); processData(); fullSync(); toggleModal(false); } }
+    function clearAllData() { if(confirm("Reset everything?")) { appState.transactions=[]; saveState(); processData(); toggleModal(false); } }
     function formatMoney(x) { return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ","); }
     function generateID() { return Math.floor(Math.random()*100000000); }
     function getCategoryIcon(c) { const m={'food':'🍔','transport':'🚗','utilities':'💡','entertainment':'🎬','salary':'💰','shopping':'🛍️','health':'💊','grocery':'🥦','other':'📦'}; return m[c]||'📦'; }
