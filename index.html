@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OmniTrack Pro | Bank Edition</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #f0f2f5;
+            --card-bg: #ffffff;
+            --text-main: #2d3436;
+            --text-sec: #636e72;
+            --primary: #0984e3;
+            --danger: #d63031;
+            --success: #00b894;
+            --warning: #f1c40f;
+            --edit: #e67e22;
+            --border: #dfe6e9;
+            --shadow: 0 4px 6px rgba(0,0,0,0.05);
+            --modal-overlay: rgba(0,0,0,0.5);
+            --table-head-bg: #f8f9fa;
+        }
+
+        [data-theme="dark"] {
+            --bg-color: #18191a;
+            --card-bg: #242526;
+            --text-main: #e4e6eb;
+            --text-sec: #b0b3b8;
+            --primary: #54a0ff;
+            --border: #3a3b3c;
+            --shadow: 0 4px 6px rgba(0,0,0,0.3);
+            --modal-overlay: rgba(0,0,0,0.8);
+            --table-head-bg: #3a3b3c;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; transition: background 0.3s, color 0.3s; }
+        body { font-family: 'Segoe UI', Inter, sans-serif; background-color: var(--bg-color); color: var(--text-main); display: flex; justify-content: center; min-height: 100vh; padding: 20px; }
+        
+        .app-container { width: 100%; max-width: 900px; display: none; flex-direction: column; gap: 20px; }
+        
+        /* --- NEW MODERN LOGIN SCREEN --- */
+        .login-overlay { 
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+            display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 2000; 
+        }
+        .login-card { 
+            background: rgba(255, 255, 255, 0.95); 
+            padding: 50px 40px; 
+            border-radius: 24px; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2); 
+            text-align: center; 
+            width: 90%; max-width: 400px; 
+            backdrop-filter: blur(10px);
+            animation: fadeIn 0.5s ease-out;
+        }
+        .login-icon { font-size: 3rem; color: #764ba2; margin-bottom: 20px; }
+        .login-title { font-size: 1.8rem; font-weight: 700; color: #333; margin-bottom: 5px; }
+        .login-subtitle { color: #666; margin-bottom: 30px; font-size: 0.9rem; }
+        
+        .pin-wrapper { position: relative; margin-bottom: 30px; }
+        .pin-input { 
+            font-size: 2.5rem; 
+            letter-spacing: 1.2rem; 
+            text-align: center; 
+            width: 100%; 
+            padding: 10px; 
+            border: none; 
+            border-bottom: 3px solid #ddd; 
+            background: transparent; 
+            color: #333; 
+            font-family: monospace;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+        .pin-input:focus { border-bottom-color: #764ba2; }
+        .pin-input::placeholder { color: #ccc; letter-spacing: 1.2rem; }
+
+        .btn-unlock { 
+            width: 100%; 
+            padding: 15px; 
+            background: linear-gradient(to right, #667eea, #764ba2); 
+            color: white; 
+            border: none; 
+            border-radius: 50px; 
+            font-size: 1.1rem; 
+            font-weight: 600; 
+            cursor: pointer; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2); 
+            transition: transform 0.2s;
+        }
+        .btn-unlock:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.25); }
+        .btn-unlock:active { transform: translateY(0); }
+
+        /* Animation for wrong pin */
+        .shake { animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both; }
+        @keyframes shake { 10%, 90% { transform: translate3d(-1px, 0, 0); } 20%, 80% { transform: translate3d(2px, 0, 0); } 30%, 50%, 70% { transform: translate3d(-4px, 0, 0); } 40%, 60% { transform: translate3d(4px, 0, 0); } }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* HEADER */
+        header { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; }
+        h1 { font-size: 1.5rem; font-weight: 700; color: var(--primary); }
+        .header-right { display: flex; align-items: center; gap: 15px; }
+        
+        /* SYNC BADGE */
+        .sync-badge { display: flex; align-items: center; gap: 6px; font-size: 0.8rem; padding: 6px 12px; border-radius: 20px; background: var(--border); color: var(--text-sec); font-weight: 600; transition: all 0.3s; }
+        .sync-badge.ready { background: rgba(9, 132, 227, 0.1); color: var(--primary); }
+        .sync-badge.syncing { background: rgba(241, 196, 15, 0.15); color: #d35400; }
+        .sync-badge.success { background: rgba(0, 184, 148, 0.15); color: var(--success); }
+        
+        .header-controls { display: flex; gap: 10px; align-items: center; border-left: 1px solid var(--border); padding-left: 15px; }
+        .icon-btn { background: none; border: none; cursor: pointer; color: var(--text-main); font-size: 1.2rem; padding: 8px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+        .icon-btn:hover { background-color: var(--border); }
+        .logout-btn { color: var(--danger); }
+        .logout-btn:hover { background-color: rgba(214, 48, 49, 0.1); }
+        .sync-btn-manual { color: var(--primary); }
+
+        /* TABS */
+        .nav-tabs { display: flex; gap: 10px; background: var(--card-bg); padding: 5px; border-radius: 10px; box-shadow: var(--shadow); width: fit-content; margin: 0 auto; }
+        .tab-btn { border: none; background: none; padding: 8px 20px; border-radius: 8px; cursor: pointer; color: var(--text-sec); font-weight: 600; }
+        .tab-btn.active { background: var(--primary); color: white; }
+
+        /* VIEWS */
+        .view-section { display: none; flex-direction: column; gap: 20px; }
+        .view-section.active-view { display: flex; }
+
+        /* STATS */
+        .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; }
+        .card { background: var(--card-bg); padding: 20px; border-radius: 16px; box-shadow: var(--shadow); text-align: center; }
+        .card h3 { font-size: 0.85rem; color: var(--text-sec); margin-bottom: 5px; text-transform: uppercase; }
+        .card .amount { font-size: 1.3rem; font-weight: 700; }
+        .inc { color: var(--success); }
+        .exp { color: var(--danger); }
+        
+        /* FORM */
+        .form-card { background: var(--card-bg); padding: 25px; border-radius: 16px; box-shadow: var(--shadow); }
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .full-width { grid-column: span 2; }
+        input, select { width: 100%; padding: 12px; background: var(--bg-color); border: 1px solid var(--border); border-radius: 8px; color: var(--text-main); font-size: 1rem; outline: none; }
+        .btn-group { display: flex; gap: 10px; margin-top: 15px; }
+        .btn-primary { background: var(--primary); color: white; border: none; padding: 15px; border-radius: 8px; font-weight: 600; cursor: pointer; flex: 1; display: flex; justify-content: center; align-items: center; gap: 10px; }
+        .btn-cancel { background: var(--text-sec); color: white; border: none; padding: 15px; border-radius: 8px; font-weight: 600; cursor: pointer; flex: 0.3; display: none; }
+
+        /* BANK TABLE HISTORY */
+        .history-section { background: var(--card-bg); border-radius: 16px; padding: 20px; box-shadow: var(--shadow); }
+        .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 15px; }
+        .header-left { display: flex; align-items: center; gap: 10px; }
+        
+        .table-responsive { overflow-x: auto; }
+        .bank-table { width: 100%; border-collapse: collapse; min-width: 600px; }
+        .bank-table th { background: var(--table-head-bg); text-align: left; padding: 12px; font-size: 0.85rem; color: var(--text-sec); text-transform: uppercase; border-bottom: 2px solid var(--border); }
+        .bank-table td { padding: 12px; border-bottom: 1px solid var(--border); font-size: 0.95rem; }
+        .bank-table tr:hover { background-color: rgba(0,0,0,0.02); }
+        
+        .col-date { width: 150px; font-size: 0.85rem; color: var(--text-sec); }
+        .col-desc { font-weight: 600; }
+        .col-money { text-align: right; font-family: 'Segoe UI', monospace; }
+        .text-inc { color: var(--success); }
+        .text-exp { color: var(--danger); }
+        .balance-cell { font-weight: bold; }
+        
+        .action-cell { text-align: center; white-space: nowrap; }
+        .action-icon { cursor: pointer; margin: 0 8px; transition: transform 0.2s; font-size: 1rem; }
+        .action-icon:hover { transform: scale(1.2); }
+        .fa-trash { color: var(--text-sec); }
+        .fa-trash:hover { color: var(--danger); }
+        .fa-pen { color: var(--primary); }
+        .fa-pen:hover { color: var(--edit); }
+
+        .pagination { display: flex; justify-content: center; gap: 10px; margin-top: 20px; align-items: center; }
+        .page-btn { padding: 8px 15px; border: 1px solid var(--border); background: var(--card-bg); border-radius: 6px; cursor: pointer; color: var(--text-main); }
+        .page-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        /* ANALYTICS */
+        .report-controls { display: flex; gap: 10px; margin-bottom: 20px; }
+        .report-table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        .report-table th { text-align: left; padding: 10px; border-bottom: 2px solid var(--border); color: var(--text-sec); font-size: 0.9rem; }
+        .report-table td { padding: 12px 10px; border-bottom: 1px solid var(--border); }
+        .bar-container { width: 100px; height: 6px; background: var(--bg-color); border-radius: 3px; overflow: hidden; margin-top: 5px; }
+        .bar-fill { height: 100%; background: var(--primary); }
+
+        /* MODAL */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--modal-overlay); align-items: center; justify-content: center; z-index: 1000; }
+        .modal-content { background: var(--card-bg); padding: 30px; border-radius: 16px; width: 90%; max-width: 400px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
+        .modal-header { display: flex; justify-content: space-between; margin-bottom: 20px; }
+        .close-modal { cursor: pointer; font-size: 1.5rem; }
+        .json-btn { width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-color); color: var(--text-main); cursor: pointer; text-align: left; }
+
+        @media (max-width: 600px) { .stats-grid, .form-grid, header { grid-template-columns: 1fr; } header { flex-direction: column; gap: 10px; align-items: flex-start; } .header-right { width: 100%; justify-content: space-between; } }
+    </style>
+</head>
+<body>
+
+    <div id="loginScreen" class="login-overlay">
+        <div class="login-card" id="loginCard">
+            <div class="login-icon"><i class="fas fa-lock"></i></div>
+            <h2 class="login-title">Welcome Back</h2>
+            <p class="login-subtitle">Enter your 4-digit PIN to access</p>
+            
+            <div class="pin-wrapper">
+                <input type="password" id="pinInput" class="pin-input" maxlength="4" placeholder="••••" autocomplete="off" inputmode="numeric">
+            </div>
+
+            <button class="btn-unlock" onclick="login()">Unlock</button>
+        </div>
+    </div>
+
+    <div id="settingsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Settings</h2>
+                <span class="close-modal" onclick="toggleModal(false)">&times;</span>
+            </div>
+            
+            <h4 style="margin-bottom:10px;">Cloud Sync</h4>
+            <div class="form-group">
+                <input type="text" id="apiUrlInput" placeholder="Google Script URL" style="margin-bottom: 10px;">
+                <button class="btn-primary" onclick="saveSettings()" style="padding: 10px; margin-top: 5px;">Save URL</button>
+            </div>
+            
+            <hr style="border:0; border-top:1px solid var(--border); margin: 20px 0;">
+
+            <h4 style="margin-bottom:10px;">Data Management</h4>
+            <button class="json-btn" onclick="exportJSON()"><i class="fas fa-download"></i> Backup Data (JSON)</button>
+            <button class="json-btn" onclick="document.getElementById('importFile').click()"><i class="fas fa-upload"></i> Restore Data (JSON)</button>
+            <input type="file" id="importFile" style="display:none" onchange="importJSON(this)">
+            
+            <button onclick="clearAllData()" style="width:100%; padding:10px; background:var(--danger); color:white; border:none; border-radius:8px; cursor:pointer; margin-top: 10px;">Reset All Data</button>
+            
+            <hr style="border:0; border-top:1px solid var(--border); margin: 20px 0;">
+            <h4 style="margin-bottom:10px;">Security</h4>
+            <input type="text" id="newPinInput" placeholder="Set New PIN (4 digits)" maxlength="4">
+            <button class="btn-primary" onclick="setNewPin()" style="padding: 10px; margin-top: 5px; background:var(--text-sec);">Update PIN</button>
+        </div>
+    </div>
+
+    <div class="app-container" id="mainApp">
+        <header>
+            <h1>OmniTrack</h1>
+            <div class="header-right">
+                <div id="syncBadge" class="sync-badge">
+                    <i class="fas fa-cloud" id="syncIcon"></i>
+                    <span id="syncText">Offline</span>
+                </div>
+                <div class="header-controls">
+                    <button class="icon-btn sync-btn-manual" onclick="manualSync()" title="Force Sync"><i class="fas fa-sync-alt"></i></button>
+                    <button class="icon-btn" onclick="toggleTheme()" id="themeBtn" title="Theme"><i class="fas fa-moon"></i></button>
+                    <button class="icon-btn" onclick="toggleModal(true)" title="Settings"><i class="fas fa-cog"></i></button>
+                    <button class="icon-btn logout-btn" onclick="logout()" title="Logout"><i class="fas fa-sign-out-alt"></i></button>
+                </div>
+            </div>
+        </header>
+
+        <div class="nav-tabs">
+            <button class="tab-btn active" onclick="switchTab('dashboard')">Dashboard</button>
+            <button class="tab-btn" onclick="switchTab('analytics')">Analytics</button>
+        </div>
+
+        <div id="dashboardView" class="view-section active-view">
+            <div class="stats-grid">
+                <div class="card">
+                    <h3>Balance</h3>
+                    <div class="amount" id="balanceDisplay">₹0.00</div>
+                </div>
+                <div class="card">
+                    <h3>Income</h3>
+                    <div class="amount inc" id="incomeDisplay">+₹0.00</div>
+                </div>
+                <div class="card">
+                    <h3>Expense</h3>
+                    <div class="amount exp" id="expenseDisplay">-₹0.00</div>
+                </div>
+            </div>
+
+            <div class="form-card">
+                <h3 style="margin-bottom:15px;" id="formTitle">Add Transaction</h3>
+                <form id="expenseForm">
+                    <div class="form-grid">
+                        <div class="full-width">
+                            <input type="text" id="desc" placeholder="Description" required>
+                        </div>
+                        <div>
+                            <input type="number" id="amount" placeholder="Amount (₹)" step="0.01" required>
+                        </div>
+                        <div>
+                            <select id="type">
+                                <option value="expense">Expense</option>
+                                <option value="income">Income</option>
+                            </select>
+                        </div>
+                        <div>
+                            <select id="category">
+                                <option value="food">🍔 Food</option>
+                                <option value="transport">🚗 Transport</option>
+                                <option value="utilities">💡 Utilities</option>
+                                <option value="entertainment">🎬 Fun</option>
+                                <option value="salary">💰 Salary</option>
+                                <option value="shopping">🛍️ Shopping</option>
+                                <option value="other">📦 Other</option>
+                            </select>
+                        </div>
+                        <div>
+                            <input type="datetime-local" id="dateInput" required>
+                        </div>
+                    </div>
+                    
+                    <div class="btn-group">
+                        <button type="submit" class="btn-primary" id="submitBtn">Add Transaction</button>
+                        <button type="button" class="btn-cancel" id="cancelBtn" onclick="cancelEdit()">Cancel</button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="history-section">
+                <div class="section-header">
+                    <div class="header-left">
+                        <h3>Bank Transaction History</h3>
+                        <span id="txCount" style="color:var(--text-sec); font-size:0.9rem">(0)</span>
+                    </div>
+                    <button class="export-btn" onclick="exportBankStatement()" style="background:var(--success); color:white; border:none; padding:8px 15px; border-radius:6px; cursor:pointer; font-weight:600;">
+                        <i class="fas fa-file-csv"></i> Export CSV
+                    </button>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="bank-table">
+                        <thead>
+                            <tr>
+                                <th>Date & Time</th>
+                                <th>Description</th>
+                                <th style="text-align:right">Debit</th>
+                                <th style="text-align:right">Credit</th>
+                                <th style="text-align:right">Balance</th>
+                                <th style="text-align:center">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="list">
+                            </tbody>
+                    </table>
+                </div>
+
+                <div class="pagination">
+                    <button class="page-btn" onclick="changePage(-1)" id="prevBtn">Prev</button>
+                    <span id="pageIndicator" style="font-size: 0.9rem;">Page 1</span>
+                    <button class="page-btn" onclick="changePage(1)" id="nextBtn">Next</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="analyticsView" class="view-section">
+            <div class="card" style="text-align:left;">
+                <h3 style="margin-bottom:15px;">Monthly Breakdown</h3>
+                <div class="report-controls">
+                    <select id="reportMonth" onchange="generateReport()">
+                        <option value="0">January</option><option value="1">February</option><option value="2">March</option>
+                        <option value="3">April</option><option value="4">May</option><option value="5">June</option>
+                        <option value="6">July</option><option value="7">August</option><option value="8">September</option>
+                        <option value="9">October</option><option value="10">November</option><option value="11">December</option>
+                    </select>
+                    <select id="reportYear" onchange="generateReport()">
+                        </select>
+                </div>
+                
+                <div id="reportSummary" style="display:flex; justify-content:space-between; margin-bottom:20px; font-weight:bold;">
+                    <span>Total In: <span class="inc" id="repInc">0</span></span>
+                    <span>Total Out: <span class="exp" id="repExp">0</span></span>
+                    <span>Net: <span id="repNet">0</span></span>
+                </div>
+
+                <table class="report-table">
+                    <thead><tr><th>Category</th><th>Amount</th><th>%</th></tr></thead>
+                    <tbody id="reportTableBody">
+                        </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+<script>
+    // --- STATE ---
+    let transactions = JSON.parse(localStorage.getItem('transactions')) || [];
+    let apiUrl = localStorage.getItem('apiUrl') || '';
+    let isDarkMode = localStorage.getItem('theme') === 'dark';
+    let userPin = localStorage.getItem('userPin') || '1234';
+    
+    // Pagination & Edit State
+    let currentPage = 1;
+    const itemsPerPage = 5; 
+    let processedTransactions = []; 
+    let editingId = null;
+
+    // DOM Elements
+    const mainApp = document.getElementById('mainApp');
+    const loginScreen = document.getElementById('loginScreen');
+    const loginCard = document.getElementById('loginCard');
+    const pinInput = document.getElementById('pinInput');
+    const syncBadge = document.getElementById('syncBadge');
+    const syncText = document.getElementById('syncText');
+    const syncIcon = document.getElementById('syncIcon');
+    const submitBtn = document.getElementById('submitBtn');
+    const cancelBtn = document.getElementById('cancelBtn');
+    const formTitle = document.getElementById('formTitle');
+
+    // --- INIT ---
+    initialize();
+
+    function initialize() {
+        resetFormDate();
+        document.getElementById('apiUrlInput').value = apiUrl;
+        
+        const yearSelect = document.getElementById('reportYear');
+        const currentYear = new Date().getFullYear();
+        for(let i = currentYear; i >= currentYear - 5; i--) {
+            const opt = document.createElement('option');
+            opt.value = i; opt.innerText = i;
+            yearSelect.appendChild(opt);
+        }
+        document.getElementById('reportMonth').value = new Date().getMonth();
+
+        applyTheme();
+        updateSyncStatus(); 
+        
+        // Auto-focus on login if locked
+        if(sessionStorage.getItem('isLoggedIn') !== 'true') {
+            pinInput.focus();
+        } else {
+            showApp();
+        }
+    }
+
+    function resetFormDate() {
+        const now = new Date();
+        now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+        document.getElementById('dateInput').value = now.toISOString().slice(0,16);
+    }
+
+    // --- AUTO UNLOCK LOGIC ---
+    pinInput.addEventListener('input', function() {
+        // If 4 digits entered, try to login automatically
+        if(this.value.length === 4) {
+            login();
+        }
+    });
+
+    function login() {
+        if(pinInput.value === userPin) {
+            sessionStorage.setItem('isLoggedIn', 'true');
+            showApp();
+            pinInput.value = '';
+        } else {
+            // Shake Effect for wrong pin
+            loginCard.classList.add('shake');
+            pinInput.value = '';
+            setTimeout(() => {
+                loginCard.classList.remove('shake');
+                pinInput.focus();
+            }, 500);
+        }
+    }
+
+    function logout() {
+        sessionStorage.removeItem('isLoggedIn');
+        mainApp.style.display = 'none';
+        loginScreen.style.display = 'flex';
+        pinInput.focus();
+    }
+
+    function showApp() {
+        loginScreen.style.display = 'none';
+        mainApp.style.display = 'flex';
+        processData();
+    }
+
+    // --- LOGIC: PROCESS & RENDER ---
+    function processData() {
+        const sorted = [...transactions].sort((a, b) => new Date(a.date) - new Date(b.date));
+        let runningBalance = 0;
+        processedTransactions = sorted.map(t => {
+            if(t.type === 'income') runningBalance += t.amount;
+            else runningBalance -= t.amount;
+            return { ...t, balanceAfter: runningBalance };
+        });
+        processedTransactions.reverse();
+        updateUI();
+    }
+
+    function updateUI() {
+        const amounts = transactions.map(t => t.type === 'income' ? t.amount : -t.amount);
+        const total = amounts.reduce((acc, item) => acc + item, 0).toFixed(2);
+        const income = amounts.filter(item => item > 0).reduce((acc, item) => acc + item, 0).toFixed(2);
+        const expense = (amounts.filter(item => item < 0).reduce((acc, item) => acc + item, 0) * -1).toFixed(2);
+
+        document.getElementById('balanceDisplay').innerText = `₹${formatMoney(total)}`;
+        document.getElementById('incomeDisplay').innerText = `+₹${formatMoney(income)}`;
+        document.getElementById('expenseDisplay').innerText = `-₹${formatMoney(expense)}`;
+        document.getElementById('txCount').innerText = `(${transactions.length})`;
+
+        renderTable();
+    }
+
+    function renderTable() {
+        const list = document.getElementById('list');
+        list.innerHTML = '';
+        
+        const start = (currentPage - 1) * itemsPerPage;
+        const end = start + itemsPerPage;
+        const pageItems = processedTransactions.slice(start, end);
+        const totalPages = Math.ceil(processedTransactions.length / itemsPerPage) || 1;
+
+        if(pageItems.length === 0) {
+            list.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:20px;">No transactions found.</td></tr>';
+        }
+
+        pageItems.forEach(t => {
+            const tr = document.createElement('tr');
+            const dateObj = new Date(t.date);
+            const dateStr = dateObj.toLocaleDateString();
+            const timeStr = dateObj.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            const isInc = t.type === 'income';
+            
+            const syncIconHtml = t.synced 
+                ? '<i class="fas fa-check-circle" style="color:var(--success); font-size:0.8rem;" title="Synced"></i>' 
+                : '<i class="fas fa-exclamation-circle" style="color:var(--warning); font-size:0.8rem;" title="Not Synced"></i>';
+
+            tr.innerHTML = `
+                <td class="col-date">${dateStr}<br><span style="font-size:0.75rem; color:#888">${timeStr}</span></td>
+                <td class="col-desc">
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        ${getCategoryIcon(t.category)} 
+                        <span>${t.desc}</span>
+                        ${syncIconHtml}
+                    </div>
+                </td>
+                <td class="col-money text-exp">${!isInc ? '₹' + formatMoney(t.amount) : '-'}</td>
+                <td class="col-money text-inc">${isInc ? '₹' + formatMoney(t.amount) : '-'}</td>
+                <td class="col-money balance-cell">₹${formatMoney(t.balanceAfter.toFixed(2))}</td>
+                <td class="action-cell">
+                    <i class="fas fa-pen action-icon" title="Edit" onclick="editTransaction(${t.id})"></i>
+                    <i class="fas fa-trash action-icon" title="Delete" onclick="removeTransaction(${t.id})"></i>
+                </td>
+            `;
+            list.appendChild(tr);
+        });
+
+        document.getElementById('pageIndicator').innerText = `Page ${currentPage} of ${totalPages}`;
+        document.getElementById('prevBtn').disabled = currentPage === 1;
+        document.getElementById('nextBtn').disabled = currentPage === totalPages;
+    }
+
+    // --- FORM HANDLING: ADD & EDIT ---
+    document.getElementById('expenseForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const desc = document.getElementById('desc').value;
+        const amount = parseFloat(document.getElementById('amount').value);
+        const type = document.getElementById('type').value;
+        const category = document.getElementById('category').value;
+        const date = document.getElementById('dateInput').value;
+
+        if (editingId) {
+            // Update Existing
+            const index = transactions.findIndex(t => t.id === editingId);
+            if (index !== -1) {
+                transactions[index] = { ...transactions[index], desc, amount, type, category, date, synced: false };
+                saveLocal();
+                cancelEdit(); // Reset form
+                processData();
+            }
+        } else {
+            // Create New
+            const transaction = { id: generateID(), desc, amount, type, category, date, synced: false };
+            transactions.push(transaction);
+            saveLocal();
+            this.reset();
+            resetFormDate();
+            processData();
+            if(apiUrl) syncToDrive(transaction);
+        }
+    });
+
+    function editTransaction(id) {
+        const t = transactions.find(x => x.id === id);
+        if(!t) return;
+
+        editingId = id;
+        document.getElementById('desc').value = t.desc;
+        document.getElementById('amount').value = t.amount;
+        document.getElementById('type').value = t.type;
+        document.getElementById('category').value = t.category;
+        
+        // Date formatting for input
+        const d = new Date(t.date);
+        d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+        document.getElementById('dateInput').value = d.toISOString().slice(0,16);
+
+        // UI Changes
+        submitBtn.innerText = "Update Transaction";
+        submitBtn.style.background = "var(--edit)";
+        cancelBtn.style.display = "block";
+        formTitle.innerText = "Edit Transaction";
+        
+        // Scroll to form
+        document.querySelector('.form-card').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function cancelEdit() {
+        editingId = null;
+        document.getElementById('expenseForm').reset();
+        resetFormDate();
+        
+        submitBtn.innerText = "Add Transaction";
+        submitBtn.style.background = "var(--primary)";
+        cancelBtn.style.display = "none";
+        formTitle.innerText = "Add Transaction";
+    }
+
+    // --- UTILS ---
+    function changePage(direction) {
+        const totalPages = Math.ceil(processedTransactions.length / itemsPerPage);
+        if (currentPage + direction > 0 && currentPage + direction <= totalPages) {
+            currentPage += direction;
+            renderTable();
+        }
+    }
+
+    function formatMoney(x) { return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ","); }
+    function saveLocal() { localStorage.setItem('transactions', JSON.stringify(transactions)); }
+    function removeTransaction(id) { if(confirm('Delete?')) { transactions = transactions.filter(t => t.id !== id); saveLocal(); processData(); } }
+    function generateID() { return Math.floor(Math.random() * 100000000); }
+    function getCategoryIcon(cat) { const map = { 'food': '🍔', 'transport': '🚗', 'utilities': '💡', 'entertainment': '🎬', 'salary': '💰', 'shopping': '🛍️', 'other': '📦' }; return map[cat] || '📦'; }
+    
+    // --- THEME ---
+    function toggleTheme() { isDarkMode = !isDarkMode; localStorage.setItem('theme', isDarkMode ? 'dark' : 'light'); applyTheme(); }
+    function applyTheme() {
+        const btn = document.getElementById('themeBtn');
+        if (isDarkMode) { document.documentElement.setAttribute('data-theme', 'dark'); btn.innerHTML = '<i class="fas fa-sun"></i>'; } 
+        else { document.documentElement.removeAttribute('data-theme'); btn.innerHTML = '<i class="fas fa-moon"></i>'; }
+    }
+
+    // --- SYNC & EXPORT ---
+    function updateSyncStatus(state = 'idle') {
+        syncBadge.className = 'sync-badge';
+        if (!apiUrl) { syncBadge.classList.add('offline'); syncText.innerText = "Offline"; syncIcon.className = "fas fa-cloud"; }
+        else if (state === 'syncing') { syncBadge.classList.add('syncing'); syncText.innerText = "Syncing..."; syncIcon.className = "fas fa-sync fa-spin"; }
+        else if (state === 'success') { syncBadge.classList.add('success'); syncText.innerText = "Synced"; syncIcon.className = "fas fa-check"; setTimeout(() => updateSyncStatus('ready'), 3000); }
+        else { syncBadge.classList.add('ready'); syncText.innerText = "Ready"; syncIcon.className = "fas fa-cloud"; }
+    }
+
+    async function syncToDrive(data) {
+        updateSyncStatus('syncing');
+        try { await fetch(apiUrl, { method: 'POST', body: JSON.stringify(data) }); 
+            const idx = transactions.findIndex(t => t.id === data.id);
+            if(idx !== -1) { transactions[idx].synced = true; saveLocal(); processData(); }
+            updateSyncStatus('success'); 
+        } catch(e) { updateSyncStatus('ready'); }
+    }
+
+    async function manualSync() {
+        if(!apiUrl) { alert("Configure URL first"); return; }
+        const unsynced = transactions.filter(t => !t.synced);
+        if(unsynced.length === 0) { alert("All Synced!"); return; }
+        if(!confirm(`Sync ${unsynced.length} items?`)) return;
+        updateSyncStatus('syncing');
+        for (const t of unsynced) {
+            try { await fetch(apiUrl, { method: 'POST', body: JSON.stringify(t) }); t.synced = true; } catch(e){}
+        }
+        saveLocal(); processData(); updateSyncStatus('success');
+    }
+
+    function exportBankStatement() {
+        if (transactions.length === 0) { alert("No data"); return; }
+        const sorted = [...processedTransactions].reverse();
+        let csvContent = "Date,Time,Description,Category,Debit,Credit,Balance\n";
+        sorted.forEach(t => {
+            const d = new Date(t.date);
+            const date = d.toLocaleDateString();
+            const time = d.toLocaleTimeString();
+            const isInc = t.type === 'income';
+            csvContent += `${date},${time},"${t.desc}",${t.category},${!isInc?t.amount:""},${isInc?t.amount:""},${t.balanceAfter.toFixed(2)}\n`;
+        });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(new Blob([csvContent], { type: 'text/csv' }));
+        link.download = `Statement.csv`;
+        link.click();
+    }
+
+    // --- SETTINGS ---
+    function toggleModal(show) { document.getElementById('settingsModal').style.display = show ? 'flex' : 'none'; }
+    function saveSettings() { const url = document.getElementById('apiUrlInput').value.trim(); if(url) { localStorage.setItem('apiUrl', url); apiUrl = url; updateSyncStatus('ready'); alert("Saved!"); toggleModal(false); } }
+    function clearAllData() { if(confirm("Delete all data?")) { transactions = []; saveLocal(); processData(); toggleModal(false); } }
+    function setNewPin() { const p = document.getElementById('newPinInput').value; if(p.length===4) { userPin=p; localStorage.setItem('userPin',p); alert("Updated"); } }
+    function exportJSON() { const d = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(transactions)); const a = document.createElement('a'); a.href=d; a.download="backup.json"; a.click(); }
+    function importJSON(i) { const f=i.files[0]; if(!f)return; const r=new FileReader(); r.onload=e=>{ transactions=[...transactions, ...JSON.parse(e.target.result)]; saveLocal(); processData(); alert("Imported"); toggleModal(false); }; r.readAsText(f); }
+
+    // --- TABS & ANALYTICS ---
+    function switchTab(tab) {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.view-section').forEach(v => v.classList.remove('active-view'));
+        if(tab === 'dashboard') { document.querySelector('[onclick="switchTab(\'dashboard\')"]').classList.add('active'); document.getElementById('dashboardView').classList.add('active-view'); } 
+        else { document.querySelector('[onclick="switchTab(\'analytics\')"]').classList.add('active'); document.getElementById('analyticsView').classList.add('active-view'); generateReport(); }
+    }
+    
+    function generateReport() {
+        const m = parseInt(document.getElementById('reportMonth').value);
+        const y = parseInt(document.getElementById('reportYear').value);
+        const data = transactions.filter(t => { const d=new Date(t.date); return d.getMonth()===m && d.getFullYear()===y; });
+        const tbody = document.getElementById('reportTableBody'); tbody.innerHTML = '';
+        let te=0, ti=0; const cats={};
+        data.forEach(t => { if(t.type==='income') ti+=t.amount; else { te+=t.amount; cats[t.category]=(cats[t.category]||0)+t.amount; } });
+        document.getElementById('repInc').innerText=`₹${formatMoney(ti)}`; document.getElementById('repExp').innerText=`₹${formatMoney(te)}`; document.getElementById('repNet').innerText=`₹${formatMoney(ti-te)}`;
+        for(const [c,a] of Object.entries(cats)) {
+            const p = te>0 ? ((a/te)*100).toFixed(1) : 0;
+            tbody.innerHTML += `<tr><td>${getCategoryIcon(c)} <span style="text-transform:capitalize">${c}</span></td><td>₹${formatMoney(a)}</td><td><div style="font-size:0.8rem">${p}%</div><div class="bar-container"><div class="bar-fill" style="width:${p}%"></div></div></td></tr>`;
+        }
+    }
+</script>
+</body>
+</html>
